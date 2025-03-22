@@ -35,7 +35,7 @@ from typing_extensions import Annotated
 from dotenv import load_dotenv
 import os
 
-from ollama import ChatResponse, Client
+from ollama import ChatResponse, Client, Options
 
 load_dotenv()
 
@@ -288,10 +288,14 @@ def new_benchmark(
                             },
                             {
                                 "role": "user",
-                                "content": f"Analyze the following email: {email.body} and respond in this format: {BenchmarkSummary.model_json_schema()}",
+                                "content": f"Analyze the following email: `{email.body}`",
+                                # and respond in this format: {BenchmarkSummary.model_json_schema()}",
                             },
                         ],
                         format=BenchmarkSummary.model_json_schema(),
+                        options=Options(
+                            num_ctx=16384,
+                        ),
                     )
                     summary = BenchmarkSummary.model_validate_json(
                         response["message"]["content"]
