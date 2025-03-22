@@ -1,0 +1,2 @@
+# .env # Actually we'll keep .env for this sample - bad practice generally, though!
+db/data/**/*

@@ -1,0 +1,92 @@
+services:
+  email-data:
+    # Single-use container to download email data to email-data-volume
+    build:
+      context: ./email-data
+      dockerfile: Dockerfile
+    volumes:
+      - email-data-volume:/data
+    restart: no
+  stock-data:
+    # Single-use container to copy stock data to stock-data-volume
+    build:
+      context: ./stock-data
+      dockerfile: Dockerfile
+    volumes:
+      - stock-data-volume:/data
+    restart: no
+
+  enron-db:
+    # Database container
+    hostname: enron-db
+    container_name: enron-db
+    image: pgvector/pgvector:pg17
+    ports:
+      - 5556:5432
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/data:/var/lib/postgresql/data
+
+  app:
+    # Application container
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    volumes:
+      - email-data-volume:/email-data
+      - stock-data-volume:/stock-data
+      - ./results:/results
+    restart: no
+    environment:
+      - MODEL_ID=${MODEL_ID}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@enron-db:5432/${POSTGRES_DB}
+      - PYTHONPATH=/code
+
+  # THESE WOULD PROBABLY BE GREAT IF NOT ON A MAC
+  # 
+  # ollama:
+  #   # OLLAMA container
+  #   hostname: ollama
+  #   container_name: ollama
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - 11434:11434
+  #   restart: no
+  #   volumes:
+  #     - ollama-volume:/root/.ollama
+
+  # inference-server:
+  #   # Hugging Face TGI container
+  #   hostname: inference-server
+  #   container_name: inference-server
+  #   platform: linux/amd64 # Required for Apple Silicon - remove if not needed
+  #   image: ghcr.io/huggingface/text-generation-inference:latest
+  #   ports:
+  #     - 8088:80
+  #   environment:
+  #     - MODEL_ID=${MODEL_ID}
+  #     - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN}
+  #     # - HF_HUB_ENABLE_HF_TRANSFER=0
+  #   restart: no
+  #   volumes:
+  #     - inference-server-volume:/data
+  #     - hugging-face-volume:/root/.cache/huggingface
+  #   command: --disable-custom-kernels
+
+volumes:
+  email-data-volume:
+    driver: local
+  stock-data-volume:
+    driver: local
+  inference-server-volume:
+    driver: local
+  hugging-face-volume:
+    driver: local
+  ollama-volume:
+    driver: local
