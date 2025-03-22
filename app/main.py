@@ -293,9 +293,9 @@ def new_benchmark(
                             },
                         ],
                         format=BenchmarkSummary.model_json_schema(),
-                        options=Options(
-                            num_ctx=16384,
-                        ),
+                        # options=Options(
+                        #     num_ctx=16384,
+                        # ),
                     )
                     summary = BenchmarkSummary.model_validate_json(
                         response["message"]["content"]
