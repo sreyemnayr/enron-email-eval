@@ -27,6 +27,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
 with Session(engine) as session:
+    histories = session.exec(select(StockHistory)).all()
+    for history in histories:
+        print(history.date, history.close)
 
     # window = func.row_number().over(
     #             partition_by=(func.date_part('week', Email.date), func.date_part('year', Email.date)),
@@ -48,7 +51,5 @@ with Session(engine) as session:
 
     # session.exec(delete(LLMBenchmark))
     # session.commit()
-    histories = session.exec(select(StockHistory)).all()
-    for history in histories:
-        print(history.date, history.close)
+
 # You are an investigator for the SEC. You specialize in securities fraud. Your job is analyzing emails to determine their nature and whether or not they are discussing stocks, stock prices, etc. You will provide a brief (1-2 sentences) summary of the email and your best evaluation of whether or not the email is discussing stocks, stock prices, etc.
