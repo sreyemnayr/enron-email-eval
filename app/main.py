@@ -277,6 +277,7 @@ def new_benchmark(
 
             done = False
             while not done:
+                print(f"Processing email {email.filename}")
                 try:
                     response: ChatResponse = chat(
                         model=MODEL_ID,
@@ -387,8 +388,7 @@ def export_benchmark(
                 file_name = benchmark_entry.email.filename
                 file_path = f"{benchmark_dir}/emails/{file_name}"
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                with open(file_path, "w") as f:
-                    f.write(benchmark_entry.email.body)
+                shutil.copy(f"/email-data/maildir/{file_name}", file_path)
 
             # Zip the emails, then delete the directory
             with zipfile.ZipFile(f"{benchmark_dir}/emails.zip", "w") as zipf:
