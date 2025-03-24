@@ -41,7 +41,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 MODEL_ID = os.getenv("MODEL_ID")
-
+CONTEXT_SIZE = os.getenv("CONTEXT_SIZE")
 engine = create_engine(DATABASE_URL)
 
 DEFAULT_SYSTEM_PROMPT = "You are an investigator for the SEC. You specialize in securities fraud. Your job is analyzing emails to determine their nature and whether or not they are discussing stocks, the stock market, stock tickers, stock prices, etc. You will provide a brief (1 sentence) summary of the email's subject matter and flag your best evaluation of whether the email is discussing stocks, stock prices, etc. Your summary should be brief and to the point, without any preamble or conclusion."
@@ -293,9 +293,7 @@ def new_benchmark(
                             },
                         ],
                         format=BenchmarkSummary.model_json_schema(),
-                        # options=Options(
-                        #     num_ctx=16384,
-                        # ),
+                        options=Options(num_ctx=CONTEXT_SIZE),
                     )
                     summary = BenchmarkSummary.model_validate_json(
                         response["message"]["content"]
