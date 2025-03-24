@@ -404,6 +404,103 @@ def export_benchmark(
 
 
 @app.command()
+def compare_benchmarks(
+    benchmark_id_1: Annotated[
+        int, typer.Option("--id1", prompt="Benchmark ID 1")
+    ] = None,
+    benchmark_id_2: Annotated[
+        int, typer.Option("--id2", prompt="Benchmark ID 2")
+    ] = None,
+):
+    with Session(engine) as session:
+        if not benchmark_id_1 or not benchmark_id_2:
+            benchmarks = session.exec(select(LLMBenchmark)).all()
+            for benchmark in benchmarks:
+                print(
+                    f"[cyan][b]{benchmark.id}:[/b] {benchmark.name} - {benchmark.model} - ({benchmark.subset})[/cyan]"
+                )
+            benchmark_id_1 = IntPrompt.ask(
+                "Benchmark ID 1",
+                choices=[str(benchmark.id) for benchmark in benchmarks],
+            )
+            benchmark_id_2 = IntPrompt.ask(
+                "Benchmark ID 2",
+                choices=[str(benchmark.id) for benchmark in benchmarks],
+            )
+
+        benchmark_1 = session.exec(
+            select(LLMBenchmark).where(LLMBenchmark.id == benchmark_id_1)
+        ).one()
+        benchmark_2 = session.exec(
+            select(LLMBenchmark).where(LLMBenchmark.id == benchmark_id_2)
+        ).one()
+
+        processed_emails = session.exec(
+            select(ProcessedEmail).where(
+                ProcessedEmail.benchmark_id.in_([benchmark_id_1, benchmark_id_2])
+            )
+        ).all()
+
+        ids_1 = [
+            x.email_id for x in processed_emails if x.benchmark_id == benchmark_id_1
+        ]
+        ids_2 = [
+            x.email_id for x in processed_emails if x.benchmark_id == benchmark_id_2
+        ]
+        shared_ids = set(ids_1) & set(ids_2)
+
+        disagreements = []
+
+        for id in list(shared_ids):
+            benchmark_entry_1 = next(
+                (
+                    x
+                    for x in processed_emails
+                    if x.email_id == id and x.benchmark_id == benchmark_id_1
+                ),
+                None,
+            )
+            benchmark_entry_2 = next(
+                (
+                    x
+                    for x in processed_emails
+                    if x.email_id == id and x.benchmark_id == benchmark_id_2
+                ),
+                None,
+            )
+            if benchmark_entry_1.stock_mentions != benchmark_entry_2.stock_mentions:
+                disagreements.append(
+                    [
+                        benchmark_entry_1.email_id,
+                        benchmark_entry_1.stock_mentions,
+                        benchmark_entry_2.stock_mentions,
+                        benchmark_entry_1.summary,
+                        benchmark_entry_2.summary,
+                    ]
+                )
+
+        if disagreements:
+            print(f"Found {len(disagreements)} disagreements")
+            with open(
+                f"/results/disagreements_{benchmark_id_1}_{benchmark_1.model}_vs_{benchmark_id_2}_{benchmark_2.model}.csv",
+                "w",
+            ) as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [
+                        "email_id",
+                        f"stock_mentions_{benchmark_1.model}",
+                        f"stock_mentions_{benchmark_2.model}",
+                        f"summary_{benchmark_1.model}",
+                        f"summary_{benchmark_2.model}",
+                    ]
+                )
+                writer.writerows(disagreements)
+        else:
+            print("No disagreements found")
+
+
+@app.command()
 def menu():
     menu_choices = {
         "NUKE": [reset_database, "Reset database"],
@@ -429,6 +526,11 @@ def menu():
             export_benchmark,
             f"Export benchmark results ({llm_benchmark_count_n} benchmarks)",
         ]
+        if llm_benchmark_count_n > 1:
+            menu_choices["c"] = [
+                compare_benchmarks,
+                f"Compare benchmark results ({llm_benchmark_count_n} benchmarks)",
+            ]
 
     menu_choices["x"] = [exit, "Exit"]
 
